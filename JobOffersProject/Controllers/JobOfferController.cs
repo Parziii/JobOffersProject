@@ -1,5 +1,6 @@
 ﻿using JobOffersProject.Model;
 using JobOffersProject.Repository;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using System.Transactions;
 
 namespace JobOffersProject.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class JobOfferController : ControllerBase
@@ -23,10 +25,16 @@ namespace JobOffersProject.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public IActionResult Get([FromQuery] PaginationFilter filter)
         {
-            var jobOffers = _jobOfferRepository.GetJobOffers();
-            return new OkObjectResult(jobOffers);
+            var route = Request.Path.Value;
+            var validFilter = new PaginationFilter(filter.PageNumber, filter.PageSize);
+            var jobOffers = _jobOfferRepository.GetJobOffers()
+            .Skip((validFilter.PageNumber - 1) * validFilter.PageSize)
+            .Take(validFilter.PageSize)
+            .ToList();
+            var totalRecords = _jobOfferRepository.GetJobOffers().Count();
+            return Ok(new PagedResponse<List<JobOffer>>(jobOffers, validFilter.PageNumber, validFilter.PageSize, totalRecords / validFilter.PageSize, totalRecords));
         }
 
         [HttpGet("{id}", Name = "Get")]
